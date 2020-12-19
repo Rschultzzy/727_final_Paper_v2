@@ -1,0 +1,225 @@
+---
+title: "Candidate Signaling and Polling"
+author: "Robert A. Schultz - University of Michigan"
+date: "`r Sys.Date()`"
+output:
+  word_document:
+    toc: yes
+  pdf_document:
+    toc: yes
+    df_print: kable
+subtitle: SurvMeth. 727 - Fall 2020
+references:
+- id: Wickham2014
+  title: Tidy Data
+  author:
+  - family: Wickham
+    given: Hadley
+  container-title: Journal of Statistical Software
+  volume: 59
+  issue: 10
+  page: 1-23
+  type: article-journal
+  issued:
+    year: 2014
+- id: Baumer2017
+  title: Modern Data Science with R
+  author:
+  - family: Baumer
+    given: Benjamin S.
+  - family: Kaplan
+    given: Daniel T.
+  - family: Horton
+    given: Nicholas J.
+  type: book
+  publisher: Chapman \& Hall/CRC Press.
+  issued:
+    year: 2017
+---
+```{r, include = FALSE}
+library(knitr)
+library(tidyverse)
+library(gtrendsR)
+library(censusapi)
+```
+
+## Introduction
+
+The 2020 presidential election led many to believe that polling is all but dead,with many taking to social media to decry that polling was not accurate for the last two elections. Media sites including the New York Times contributor Nate Cohn, even wrote shortly after the election that, “..survey research has gotten even more challenging since 2016, and whatever steps pollsters took to improve after 2016 were canceled out by a new set of problems.” Yet Americans are still enamored with predictions and theories of various events that will predict who will take the White House. Sites such as Predictit have even popped up allowing just about anyone to put money on who they believe will win the election. This paper looks at the signs around us that voters may use to signal who they support. Since we do not have exact data on the number of signs or stickers each candidate shares or how many of these items are actually displayed publicly we turn to Google trends. Assuming that someone searching for  particular candidate signage on Google will lead to purchasing or ordering of signage.  While this relationship is not 1:1, we use this search as a proxy to displaying signage. Overlaying this data to polling averages, we look to understand if a relationship for searches for signage has any relationship to how that candidate is polling. Our analysis supports correlation but not a casual relationship between search intensity for signs by state and polling. 
+    
+## Background
+
+Little empirical research has been conducted on the impact(s) signage has on election outcomes. Research supports that having yard signs individuals believe in a participatory act that is an individual act and contingent on social networking. At least at the local level some find that sings increased advertising candidates vote shares, and provide possible evidence that signs have a small spillover effect into adjacent voting precincts that don't have signs. 
+
+Using Google trends to understand voting behavior has been studied more extensively. Researchers looking at Google Trend searches before the 2015 GReferndum found that data by searches was more predictive than polling. Using trend data before the 2008 election, it was found that areas that used more racially charged languages in their searches was significant predictor in a negative predictor of Obama's vote share in that area. 
+
+
+## Data
+
+Using Google trends allows us to see searches by intensity for a particual keyword or phrase in a specified area. Google Trends data provides an unfiltered sample of search requests made to Google. It supplies an index for search intensity by topic over the time period requested in a geographical area. This is the number of daily searches for the specified topic divided by the maximum number of daily searches for this topic over the time period in question in that geographical area. This is scaled from zero to 100, where 100 is the day with the most searches for that topic and zero indicates that a given day did not have sufficient search volume for the specific term. Google search data shows aggregate measures of search activity in a location (e.g. a State or Country), and is thus less vulnerable to small-sample bias. The following search terms were used in our analysis:, Biden Yard Sign, Biden Bumper Sticker, Trump Yard Sign, Trump Bumper Sticker. Data from June 1st to November 2nd, was used as our range of interest for the lead-up to the November 2020 election day.
+
+For our polling data, Five Thirty Eight, Presidential general Election Polls data was used. Using all polls on their site, from June 1st to November 2nd of 2020 a mean average for the state and national level is created and used in our analysis. 
+
+Graph below (using gtrends package) shows interest over time between the Democratic Candidate for President Joe Biden and the Republican (incumbent) President Donald Trump for searches for bumper stickers.
+
+```{r echo=FALSE}
+res <- gtrends(c("Trump Bumper Sticker", "Biden Bumper Sticker"), geo = "US", time = "2020-06-01 2020-11-02", low_search_volume = T)
+plot(res)
+```
+
+The spike for Biden Bumper Stickers in mid August, is suspected to be attributed to the Democratic National Convention. At the conclusion of this event, Biden was named the official candidate of the Democratic Party to take on the incumbent, Donald J. Trump. This spike would assume, as soon as the nomination was accepted, supporters saw an increase in support for their candidate.
+
+Using Google trends package, it is possible to find search intensity by region for our time frame. Searches for Biden Bumper stickers were most intense in Maine, the District of Columbia, Delaware and Vermont. 
+```{r echo=FALSE}
+res <- gtrends("Biden Bumper Sticker", 
+               geo = "US",
+               time = "2020-06-01 2020-11-02")
+ 
+state <- map_data("state")
+ 
+res$interest_by_region %>%
+  mutate(region = tolower(location)) %>%
+  filter(region %in% state$region) %>%
+  select(region, hits) -> my_df
+ 
+ggplot() +
+  geom_map(data = state,
+           map = state,
+           aes(x = long, y = lat, map_id = region),
+           fill="#ffffff", color="#ffffff", size=0.15) +
+  geom_map(data = my_df,
+           map = state,
+           aes(fill = hits, map_id = region),
+           color="#ffffff", size=0.15) +
+  labs(title = "Biden Bumper Sticker Searches By State") +
+  scale_fill_continuous(low = 'grey', high = 'blue') +
+  theme(panel.background = element_blank(),
+        axis.ticks = element_blank(),
+        axis.text = element_blank(),
+        axis.title = element_blank())
+```
+
+
+Trump bumper stickers were most searched for in the District of Columbia, Kentucky, New Mexico and Connecticut. 
+```{r echo=FALSE}
+res <- gtrends("Trump Bumper Sticker",
+               geo = "US",
+               time = "2020-06-01 2020-11-02")
+ 
+state <- map_data("state")
+ 
+res$interest_by_region %>%
+  mutate(region = tolower(location)) %>%
+  filter(region %in% state$region) %>%
+  select(region, hits) -> my_df
+ 
+ggplot() +
+  geom_map(data = state,
+           map = state,
+           aes(x = long, y = lat, map_id = region),
+           fill="#ffffff", color="#ffffff", size=0.15) +
+  geom_map(data = my_df,
+           map = state,
+           aes(fill = hits, map_id = region),
+           color="#ffffff", size=0.15) +
+  labs(title = "Trump Bumper Sticker Searches By State") +
+  scale_fill_continuous(low = 'grey', high = 'red') +
+  theme(panel.background = element_blank(),
+        axis.ticks = element_blank(),
+        axis.text = element_blank(),
+        axis.title = element_blank())
+```
+
+We then use the same time frame to look at searches for candidate yard signs. Date range, canidates and nationwide searches are kept in the same parameter. 
+```{r echo=FALSE}
+res2 <- gtrends(c("Trump Yard Sign", "Biden Yard Sign"), geo = "US", time = "2020-06-01 2020-11-02", low_search_volume = T)
+plot(res2)
+```
+
+Again, we see a spike for the Democratic Candidate Biden compared to the incumbent Donald Trump around the same time the nomination was made official. Looking at search intensity by region, searches were most intense in Ohio, Minnesota and Wisconsin. 
+
+```{r echo=FALSE}
+res <- gtrends("Biden Yard Sign",
+               geo = "US",
+               time = "2020-06-01 2020-11-02")
+ 
+state <- map_data("state")
+ 
+res$interest_by_region %>%
+  mutate(region = tolower(location)) %>%
+  filter(region %in% state$region) %>%
+  select(region, hits) -> my_df
+ 
+ggplot() +
+  geom_map(data = state,
+           map = state,
+           aes(x = long, y = lat, map_id = region),
+           fill="#ffffff", color="#ffffff", size=0.15) +
+  geom_map(data = my_df,
+           map = state,
+           aes(fill = hits, map_id = region),
+           color="#ffffff", size=0.15) +
+   labs(title = "Biden Yard Sign Searches By State") +
+  scale_fill_continuous(low = 'grey', high = 'blue') +
+  theme(panel.background = element_blank(),
+        axis.ticks = element_blank(),
+        axis.text = element_blank(),
+        axis.title = element_blank())
+```
+
+By searches for Trump Yard Signs, supporters in Ohio, Wisconsin, Michigan and Pennsylvania searched for yard signs the most nationwide. 
+```{r echo=FALSE}
+res <- gtrends("Trump Yard Sign",
+               geo = "US",
+               time = "2020-06-01 2020-11-02")
+ 
+state <- map_data("state")
+ 
+res$interest_by_region %>%
+  mutate(region = tolower(location)) %>%
+  filter(region %in% state$region) %>%
+  select(region, hits) -> my_df
+ 
+ggplot() +
+  geom_map(data = state,
+           map = state,
+           aes(x = long, y = lat, map_id = region),
+           fill="#ffffff", color="#ffffff", size=0.15) +
+  geom_map(data = my_df,
+           map = state,
+           aes(fill = hits, map_id = region),
+           color="#ffffff", size=0.15) +
+  labs(title = "Trump Yard Sign Searches By State") +
+  scale_fill_continuous(low = 'grey', high = 'red') +
+  theme(panel.background = element_blank(),
+        axis.ticks = element_blank(),
+        axis.text = element_blank(),
+        axis.title = element_blank())
+```
+
+## Five Thirty Eight Polling
+
+From the Five Thirty Eight Site, all polls from all states from June 1st to November 2nd were used to create a day by day average of each candidate. Each poll was left unweighted in this analysis and all polls were kept as is and not changed by polling grade or how many were run in each state. Some states that are key battleground states such as Michigan, Ohio, Texas and Florida had many polls being added to the site daily. While other states like Wyoming were only polled once in the date range selected. We create a national polling average, with Biden's average in blue and Trump's in Red.
+
+
+
+During our period for analysis, Biden never polled below 48% support and garnered as high as 52.8% support. Trump polled between 41 to 44% during the same time. Look at this data compared to our search intensity, we don't see similiar spikes that were present in mid-August and September for Biden. 
+
+From this a dataframe was created with each candidates Google search intensity for yard signs and that days polling average. From this a simple OLS model was run to see if their is a relationship between polling average and search intensity. 
+
+
+## Results
+
+Our regression shows no significant relationship between our predictor (search intensity) and outcome (polling average) and therefore we cannot attribute yard signs to polling averages. Their does appear to be somewhat of a correlation between searches and location. Particularly, battleground states such as Michigan, Ohio, Wisconsin all see a lot of search intensity and based on post-election results and polls, were extremely contested areas for each candidate. The high search intensity for signage in Biden's home state of Delaware shows support from those in his state comparatively to his opponent. Low intensity for yard signs in states that Trump lost such as California and New York also seem to support correlation between searches and support toward a canidate.
+
+Our results could be limited for a variety of reasons. Particularly the data we use is somewhat limited. As seen by our maps, some states don't have enough searches to register, and thus are not factored much into our analysis. Our polling is not consistent across the nation either, with some states being polled much more than other states. This shows some of the limitations of using Google Trends searches and data for predictions. 
+
+## Discussion and Future Work(s)
+
+Future work could look at more time series lag between polls and specific states. As some states have more search activity and polling, we could focus on select states because more data would be available. Using Google Trends, analysis could be run at a metropolitan level within states of interest such as Ohio, Pennsylvania and Michigan. All these states based on election results were extremely important swing states to the election. 
+
+Not much quantitative research is available on yard signs and election outcomes. Researchers at NYU's Mathematics Department with support from Amazon Web Services recently announced they are looking into possible trends, but nothing conclusive has been made public. 
+
+This research is worth continuing to investigate to understand if those that publicly display their support for a candidate by way of a sign do have influence on other voters, or are influenced by other factors such as current polling. 
+
+## References
